@@ -15,22 +15,29 @@ For object segmentation task:
 
 """
 import tensorflow as tf
-def deeplab_v3_encoder(inputs, output_stride=8):
+import tensorflow_hub as hub
+
+MOBILE_NET_V2_HUB = "https://tfhub.dev/google/imagenet/mobilenet_v2_140_224/feature_vector/1"
+
+def deeplab_v3_encoder(inputs, 
+                      hub_path=MOBILE_NET_V2_HUB, 
+                      output_stride=8):
   """
 
   """
   if output_stride not in {8, 16}:
     raise ValueError("`output_stride` should be 8, 16, or 32.")  
 
-  features_ = tf.
+  model = hub.Module(hub_path)
+  features_map = model(inputs)
+  
   features = atrous_spatial_pyramid_pooling(
-    features_map,
-    atrous_rates=[12, 24, 36])
+    features_map=features_map, atrous_rates=[12, 24, 36])
 
   encoder = tf.concat(features)
   encoder = tf.layers.conv2d(encoder, [1, 1])
-
   return lower_level_features, endcorer
+
 
 def atrous_spatial_pyramid_pooling(features_map, atrous_rates=[12, 24, 36]):
   """
@@ -40,21 +47,3 @@ def atrous_spatial_pyramid_pooling(features_map, atrous_rates=[12, 24, 36]):
     atrous_conv = tf.layers.SeparableConv2D()
 
   raise NotImplementedError
-
-def _mobile_net_v2(inputs, include_top=False):
-  """MobileNet feature extractor
-  """
-  model = tf.keras.applications.MobileNet(
-      input_tensor=inputs, include_top=include_top)
-  return model
-
-def _aligned_xeception(inputs, include_top=False):
-  """Aligned Xception feature extractor
-
-  Args:
-    inputs: a Tensor - shape [batch, width, height, channels]
-  """
-  model = tf.keras.applications.Xception(
-    input_tensor=inputs, include_top=include_top)
-  return model
-  

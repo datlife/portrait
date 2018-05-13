@@ -4,10 +4,8 @@ convolution neural network. (so wordy!!!)
 For object segmentation task:
   * Output stride (input / output res. ratio)  = 16 (or 8) 
   for denser feature extraction.
-
   * Atrous Conv Rate = 2 , or 4 to the last two blocks/
   (for output stride = 8).
-
   * Atrous Spatial Pyramid Pooling : https://arxiv.org/pdf/1706.05587.pdf
   (Feature_Map) --> (Global Pooling) ---> (1 x 1) Conv, 256 filters
   ---> (Batch Normalization) --> Atrous Conv Rates =(12, 24, 36)
@@ -16,17 +14,15 @@ For object segmentation task:
 # TODO:
    * Add suggested hyperparameters for training
    * Removed fixed image size
-
 """
 import tensorflow as tf
-from deeplab.core.feature_extractor import feature_extractor
+from feature_extractor import feature_extractor
 
 def extract_features(images,
                      is_training=True,
                      network_backbone='mobilenet_v2', 
                      output_stride=8):
-  """DeepLab V3+ Encoder
-
+  """
   Args:
     images:
     is_training:
@@ -68,21 +64,6 @@ def extract_features(images,
 
   return encoded_features, low_level_features
 
-def scale_dimension(dim, scale):
-  """Scales the input dimension.
-
-  Args:
-    dim: Input dimension (a scalar or a scalar Tensor).
-    scale: The amount of scaling applied to the input.
-
-  Returns:
-    Scaled dimension.
-  """
-  if isinstance(dim, tf.Tensor):
-    return tf.cast((tf.to_float(dim) - 1.0) * scale + 1.0, dtype=tf.int32)
-  else:
-    return int((float(dim) - 1.0) * scale + 1.0)
-
 def atrous_spatial_pyramid_pooling(network_backbone,
                                    feature_map,
                                    depth=256,
@@ -92,15 +73,13 @@ def atrous_spatial_pyramid_pooling(network_backbone,
                                    atrous_rates=[12, 24, 36]):
 
   logit_branches = []
-
-  # Image feature
   pool_height = scale_dimension(224, 1. / output_stride)
   pool_width = scale_dimension(224, 1. / output_stride)
 
+  # Image feature level
   image_feature = tf.layers.AveragePooling2D(
       pool_size=(pool_height, pool_width), 
       strides=2)(feature_map)
-
   image_feature = tf.layers.Conv2D(depth, (1, 1))(image_feature)
   image_feature = tf.image.resize_bilinear(
       images=image_feature, 
@@ -114,8 +93,8 @@ def atrous_spatial_pyramid_pooling(network_backbone,
   logit_branches.append(conv_1x1)
 
   # 3x3 Atrous Separable Convs,
-  # the original implementation does not use
-  # in MobileNet v2
+  # the original implementation does not use Atrous Separable Conv
+  # in MobileNet v2.
   if network_backbone != 'mobilenet_v2':
     for rate in atrous_rates:
       assp_features = _atrous_separable_conv(
@@ -169,3 +148,18 @@ def _atrous_separable_conv(features,
   pointwise_conv = normalizer_fn(pointwise_conv)
   pointwise_conv = activation_fn(pointwise_conv)
   return pointwise_conv
+
+def scale_dimension(dim, scale):
+  """Scales the input dimension.
+
+  Args:
+    dim: Input dimension (a scalar or a scalar Tensor).
+    scale: The amount of scaling applied to the input.
+
+  Returns:
+    Scaled dimension.
+  """
+  if isinstance(dim, tf.Tensor):
+    return tf.cast((tf.to_float(dim) - 1.0) * scale + 1.0, dtype=tf.int32)
+  else:
+    return int((float(dim) - 1.0) * scale + 1.0)

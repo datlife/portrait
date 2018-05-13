@@ -22,13 +22,17 @@ depth-of-field filter adjuster. Important benfits:
 
 """
 import tensorflow as tf
-
-from .core import encoder
-from .core import decoder
+from core import encoder
+from core import decoder
 
 def deeplab_v3_plus_model(images):
   """"Define Encoder-Decoder Atrous Separable Convolutional
-  Neural network.
+  Neural network, a.k.a DeepLabV3+.
+
+  Args:
+    images: 4D Tensor - represent image batch size
+      [batch, height, width, channels]
+    
   """
   encoded_features, low_level_features = \
     encoder.extract_features(

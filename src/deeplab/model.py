@@ -22,20 +22,23 @@ depth-of-field filter adjuster. Important benfits:
 
 """
 import tensorflow as tf
-from deeplab.core import encoder
-from deeplab.core import decoder
 
-def model_fn(inputs, labels, mode, params):
+from .core import encoder
+from .core import decoder
+
+def deeplab_v3_plus_model(images):
   """"Define Encoder-Decoder Atrous Separable Convolutional
   Neural network.
-
-  
   """
-
   encoded_features, low_level_features = \
-    encoder.extract_features(inputs)
+    encoder.extract_features(
+        images=images, 
+        is_training=True, 
+        network_backbone='mobilenet_v2',
+        output_stride=8)
 
-  outputs = decoder.reconstruct(
-    encoded_features, low_level_features)
+  # TODO: define decoder
+  # outputs = decoder.reconstruct(
+  #   encoded_features, low_level_features)
 
-  return outputs
+  return encoded_features, low_level_features

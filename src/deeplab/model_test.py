@@ -1,7 +1,7 @@
 """Tests for encoder"""
 import tensorflow as tf
 import numpy as np
-from deeplab.core.encoder import extract_features
+from .model import deeplab_v3_plus_model
 
 def create_test_inputs(batch, height, width, channels):
   """Create mock Images """
@@ -15,18 +15,16 @@ def create_test_inputs(batch, height, width, channels):
             [1 ,height, width, 1]),
           [batch, 1, 1, channels]))
 
-class DeepLabV3PlusEncoderTest(tf.test.TestCase):
+class DeepLabV3PlusTest(tf.test.TestCase):
 
-  def testBuildDeepLabV3PlusEncoder(self):
+  def testBuildDeepLabV3Plus(self):
     """"Encoder Constructor Test"""
 
     images = create_test_inputs(2, 224, 224, 3)
 
-    encoded_features, _ = extract_features(
-      images=images,
-      is_training=True,
-      output_stride=8)
-hon
+    encoded_features, low_level_features = deeplab_v3_plus_model(
+      images=images)
+
     self.assertListEqual(
       encoded_features.get_shape().as_list(), 
       [2, 28, 28, 256])

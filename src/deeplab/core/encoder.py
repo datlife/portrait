@@ -16,19 +16,32 @@ For object segmentation task:
 # TODO:
    * Add suggested hyperparameters for training
    * Removed fixed image size
-   
+
 """
 import tensorflow as tf
-from feature_extractor import feature_extractor
+from deeplab.core.feature_extractor import feature_extractor
 
-def deeplab_v3_encoder(images,
-                      is_training=True,
-                      network_backbone='mobilenet_v2', 
-                      output_stride=8):
+def extract_features(images,
+                     is_training=True,
+                     network_backbone='mobilenet_v2', 
+                     output_stride=8):
   """DeepLab V3+ Encoder
+
+  Args:
+    images:
+    is_training:
+    network_backbone:
+    output_stride:
+  
+  Returns:
+    encoded_features, low_level_features
+    
+  Raise:
+    ValueError:
   """
   if output_stride not in {8, 16}:
-    raise ValueError("`output_stride` should be 8, 16, or 32.")  
+    raise ValueError(
+      "`output_stride` should be 8, 16, or 32.")  
 
   if network_backbone not in ['mobilenet_v2', 'xception']:
     raise ValueError(
@@ -36,7 +49,7 @@ def deeplab_v3_encoder(images,
 
   # Extract feature map and low level features
   # from network backbone.
-  feature_map, _ = feature_extractor(
+  feature_map, low_level_features = feature_extractor(
       images=images,
       model=network_backbone,
       is_training=is_training)
@@ -48,13 +61,12 @@ def deeplab_v3_encoder(images,
       output_stride=8)
 
   # Merge all atrous features into a feature map
-  encoder = tf.concat(assp_features, 3)
-  encoder = tf.layers.Conv2D(256, (1, 1))(encoder)
-  encoder = tf.layers.batch_normalization(encoder)
-  encoder = tf.nn.relu6(encoder)
+  encoded_features = tf.concat(assp_features, 3)
+  encoded_features = tf.layers.Conv2D(256, (1, 1))(encoded_features)
+  encoded_features = tf.layers.batch_normalization(encoded_features)
+  encoded_features = tf.nn.relu6(encoded_features)
 
-  return encoder
-
+  return encoded_features, low_level_features
 
 def scale_dimension(dim, scale):
   """Scales the input dimension.

@@ -4,6 +4,7 @@ import tensorflow as tf
 
 from model import deeplab_v3_plus_model
 
+
 def create_test_inputs(batch, height, width, channels):
   """Create mock Images """
   if None in [batch, height, width, channels]:
@@ -13,8 +14,9 @@ def create_test_inputs(batch, height, width, channels):
         np.tile(np.reshape(
             np.reshape(np.arange(height), [height, 1]) +
             np.reshape(np.arange(width), [1, width]),
-            [1 ,height, width, 1]),
+            [1, height, width, 1]),
           [batch, 1, 1, channels]))
+
 
 class DeepLabV3PlusTest(tf.test.TestCase):
 
@@ -23,7 +25,7 @@ class DeepLabV3PlusTest(tf.test.TestCase):
 
     images = create_test_inputs(2, 224, 224, 3)
 
-    encoded_features, low_level_features = deeplab_v3_plus_model(
+    encoded_features, _ = deeplab_v3_plus_model(
       images=images)
 
     self.assertListEqual(

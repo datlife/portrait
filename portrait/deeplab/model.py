@@ -21,9 +21,12 @@ depth-of-field filter adjuster. Important benfits:
     * w : a convolution filter
 
 """
+from __future__ import division
+from __future__ import absolute_import
+
 import tensorflow as tf
-from core import encoder
-from core import decoder
+from portrait.deeplab.core import encoder, decoder
+
 
 def deeplab_v3_plus_model(images):
   """"Define Encoder-Decoder Atrous Separable Convolutional

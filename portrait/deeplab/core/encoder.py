@@ -16,13 +16,20 @@ For object segmentation task:
    * Removed fixed image size
 """
 import tensorflow as tf
-from feature_extractor import feature_extractor
+
+from portrait.deeplab.core import ops
+from portrait.deeplab.core.feature_extractor import feature_extractor
+
 
 def extract_features(images,
                      is_training=True,
                      network_backbone='mobilenet_v2', 
                      output_stride=8):
-  """
+  """Extract sematic  features, given a network
+  backbone (e.g. MobileNetv2, Xception). Then, perform
+  "atrous spatial pyramid pooling" to get a concatenated 
+  encoded features.
+
   Args:
     images:
     is_training:
@@ -30,10 +37,12 @@ def extract_features(images,
     output_stride:
   
   Returns:
-    encoded_features, low_level_features
+    encoded_features - 4D Tensor
+    low_level_features - 4D Tensor
     
   Raise:
-    ValueError:
+    ValueError: `output_stride` or `network_backbone` input
+      is invalid.
   """
   if output_stride not in {8, 16}:
     raise ValueError(
@@ -47,7 +56,7 @@ def extract_features(images,
   # from network backbone.
   feature_map, low_level_features = feature_extractor(
       images=images,
-      model=network_backbone,
+      model_variant=network_backbone,
       is_training=is_training)
 
   assp_features = atrous_spatial_pyramid_pooling(
@@ -57,12 +66,12 @@ def extract_features(images,
       output_stride=8)
 
   # Merge all atrous features into a feature map
-  encoded_features = tf.concat(assp_features, 3)
-  encoded_features = tf.layers.Conv2D(256, (1, 1))(encoded_features)
-  encoded_features = tf.layers.batch_normalization(encoded_features)
-  encoded_features = tf.nn.relu6(encoded_features)
+  features = tf.layers.Conv2D(256, (1, 1))(assp_features)
+  features = tf.layers.batch_normalization(features)
+  features = tf.nn.relu6(features)
 
-  return encoded_features, low_level_features
+  return features, low_level_features
+
 
 def atrous_spatial_pyramid_pooling(network_backbone,
                                    feature_map,
@@ -70,84 +79,112 @@ def atrous_spatial_pyramid_pooling(network_backbone,
                                    normalizer_fn=tf.layers.BatchNormalization,
                                    activation_fn=tf.nn.relu6,
                                    output_stride=8,
-                                   atrous_rates=[12, 24, 36]):
+                                   ):
+  """
 
-  logit_branches = []
-  pool_height = scale_dimension(224, 1. / output_stride)
-  pool_width = scale_dimension(224, 1. / output_stride)
+  Args:
+    network_backbone:
+    feature_map:
+    depth:
+    normalizer_fn:
+    activation_fn:
+    output_stride:
 
-  # Image feature level
-  image_feature = tf.layers.AveragePooling2D(
-      pool_size=(pool_height, pool_width), 
-      strides=2)(feature_map)
-  image_feature = tf.layers.Conv2D(depth, (1, 1))(image_feature)
-  image_feature = tf.image.resize_bilinear(
-      images=image_feature, 
-      size=[pool_height, pool_width],
-      align_corners=True)
-  image_feature.set_shape([None, pool_height, pool_width, depth])
-  logit_branches.append(image_feature)
+  Returns:
 
-  # 1x1 Conv 
-  conv_1x1 = tf.layers.Conv2D(depth, (1, 1))(feature_map)
-  logit_branches.append(conv_1x1)
+  """
+  atrous_rates = [12, 24, 36] if output_stride == 8 else [6, 12, 18]
+  with tf.variable_scope(name_or_scope='aspp'):
+    logit_branches = []
+    pool_height = scale_dimension(224, 1. / output_stride)
+    pool_width = scale_dimension(224, 1. / output_stride)
 
-  # 3x3 Atrous Separable Convs,
-  # the original implementation does not use Atrous Separable Conv
-  # in MobileNet v2.
-  if network_backbone != 'mobilenet_v2':
-    for rate in atrous_rates:
-      assp_features = _atrous_separable_conv(
-          features=feature_map,
-          output_depth=depth,
-          kernel_size=3,
-          atrous_rate=rate,
-          weight_decay=0.00004,
-          activation_fn=activation_fn,
-          normalizer_fn=normalizer_fn)
-      logit_branches.append(assp_features)
+    # Image feature level
+    with tf.variable_scope('image_level_pooling'):
+      image_feature = tf.layers.AveragePooling2D(
+          pool_size=(pool_height, pool_width),
+          strides=2)(feature_map)
+      image_feature = tf.layers.Conv2D(depth, (1, 1))(image_feature)
+      image_feature = tf.image.resize_bilinear(
+          images=image_feature,
+          size=[pool_height, pool_width],
+          align_corners=True)
+      image_feature.set_shape([None, pool_height, pool_width, depth])
+      logit_branches.append(image_feature)
 
-  return logit_branches
+    # 1x1 Conv
+    with tf.variable_scope('1x1_conv_pooling'):
+      conv_1x1 = tf.layers.Conv2D(depth, (1, 1))(feature_map)
+      logit_branches.append(conv_1x1)
+
+    # 3x3 Atrous Separable Convs,
+    if network_backbone != 'mobilenet_v2':
+      for idx, rate in enumerate(atrous_rates):
+        scope = 'aspp_%s' % idx
+        assp_features = _atrous_separable_conv(
+            features=feature_map,
+            output_depth=depth,
+            kernel_size=3,
+            atrous_rate=rate,
+            activation_fn=activation_fn,
+            normalizer_fn=normalizer_fn,
+            scope=scope)
+        logit_branches.append(assp_features)
+
+    return tf.concat(logit_branches, 3)
+
 
 def _atrous_separable_conv(features, 
                            output_depth,
                            kernel_size=3,
                            strides=1,
                            atrous_rate=1, 
-                           weight_decay=0.00004,
-                           activation_fn=tf.nn.relu6, 
+                           activation_fn=tf.nn.relu6,
                            normalizer_fn=tf.nn.batch_normalization,
                            scope=None):
-  """Define an atrous separable convolution layer.
+  """
   
+  Args:
+    features: 
+    output_depth: 
+    kernel_size: 
+    strides: 
+    atrous_rate: 
+    weight_decay: 
+    activation_fn: 
+    normalizer_fn: 
+    scope: 
+
+  Returns:
+
+  """"""
   @TODO: add weight_decay, weight_regularizer, scope
   """
+  with tf.variable_scope(scope):
+    if strides == 1:
+      padding = 'same'
+    else:
+      padding = 'valid'
+      kernel_size_effective = kernel_size + (kernel_size - 1) * (atrous_rate - 1)
+      features = ops.pad_inputs(features, kernel_size_effective)
 
-  if strides == 1:
-    padding = 'same'
-  else:
-    padding = 'valid'
-    kernel_size_effective = kernel_size + (kernel_size - 1) * (atrous_rate - 1)
-    pad_total = kernel_size_effective - 1
-    pad_beg = pad_total // 2
-    pad_end = pad_total - pad_beg
-    features = tf.keras.layers.ZeroPadding2D((pad_beg, pad_end))(features)
-  depthwise_conv = tf.keras.layers.DepthwiseConv2D(
-      kernel_size=(3, 3),
-      strides=strides,
-      depth_multiplier=1,
-      dilation_rate=(atrous_rate, atrous_rate),
-      padding=padding)(features)
-  depthwise_conv = normalizer_fn(depthwise_conv)
-  depthwise_conv = activation_fn(depthwise_conv)
-  
-  pointwise_conv = tf.layers.Conv2D(
-      filters=output_depth,
-      kernel_size=(1, 1),
-      padding='SAME')(depthwise_conv)
-  pointwise_conv = normalizer_fn(pointwise_conv)
-  pointwise_conv = activation_fn(pointwise_conv)
+    depthwise_conv = tf.keras.layers.DepthwiseConv2D(
+        kernel_size=(3, 3),
+        strides=strides,
+        depth_multiplier=1,
+        dilation_rate=(atrous_rate, atrous_rate),
+        padding=padding)(features)
+    depthwise_conv = normalizer_fn(depthwise_conv)
+    depthwise_conv = activation_fn(depthwise_conv)
+
+    pointwise_conv = tf.layers.Conv2D(
+        filters=output_depth,
+        kernel_size=(1, 1),
+        padding='SAME')(depthwise_conv)
+    pointwise_conv = normalizer_fn(pointwise_conv)
+    pointwise_conv = activation_fn(pointwise_conv)
   return pointwise_conv
+
 
 def scale_dimension(dim, scale):
   """Scales the input dimension.

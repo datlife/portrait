@@ -1,17 +1,5 @@
-import tensorflow as tf
 import functools
-
-
-def _mobilenetv2_conv_block(inputs):
-  x = tf.layers.SeparableConv2D()(inputs)
-  x = tf.layers.BatchNormalization()(x)
-  x = tf.nn.relu6(x)
-  return x
-
-
-def _xecpetion_conv_block(inputs):
-  raise NotImplementedError
-
+import tensorflow as tf
 
 def pad_inputs(inputs, kernel_size, data_format='channel_last'):
   """Pads along spatial dims of input size.
@@ -50,6 +38,17 @@ def pad_inputs(inputs, kernel_size, data_format='channel_last'):
     raise ValueError('Unsupported `data_format` value.')
 
   return padded_inputs
+
+
+def _mobilenetv2_conv_block(inputs):
+  x = tf.layers.SeparableConv2D()(inputs)
+  x = tf.layers.BatchNormalization()(x)
+  x = tf.nn.relu6(x)
+  return x
+
+
+def _xecpetion_conv_block(inputs):
+  raise NotImplementedError
 
 
 

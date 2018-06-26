@@ -18,12 +18,13 @@ def feature_extractor(images, is_training, model_variant='mobilenet_v2'):
     model_variant:
 
   Returns:
-    feature_mao
+    feature_map
   """
   if model_variant == 'mobilenet_v2':
     try:
       model = hub.Module(MOBILENET_V2_HUB, trainable=is_training)
     except Exception as e:
+      print(e)
       raise ValueError("Are you connected to Internet?")
 
     outputs = model(
@@ -32,8 +33,14 @@ def feature_extractor(images, is_training, model_variant='mobilenet_v2'):
         as_dict=True)
 
     feature_map = outputs["MobilenetV2/layer_7/output"]
-    low_level_features = None
+
+    # https://github.com/tensorflow/models/blob/master/research/deeplab/core/feature_extractor.py#L101
+    low_level_features = outputs["MobilenetV2/layer_4/depthwise_output"]
     return feature_map, low_level_features
 
-  else:
+  elif model_variant == 'xception':
     raise NotImplementedError
+  
+  else:
+    raise ValueError(
+        '`model_variant` only supports MobileNet-V2 and Xception')

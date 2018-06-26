@@ -1,8 +1,7 @@
 """Tests for encoder"""
 import numpy as np
 import tensorflow as tf
-
-from model import deeplab_v3_plus_model
+from portrait.deeplab.model import deeplab_v3_plus_model
 
 
 def create_test_inputs(batch, height, width, channels):
@@ -19,20 +18,17 @@ def create_test_inputs(batch, height, width, channels):
 
 
 class DeepLabV3PlusTest(tf.test.TestCase):
-
   def testBuildDeepLabV3Plus(self):
     """"Encoder Constructor Test"""
-
     images = create_test_inputs(2, 224, 224, 3)
-
-    encoded_features, _ = deeplab_v3_plus_model(
-      images=images)
-
+    
+    segmentation_mask = deeplab_v3_plus_model(
+        images=images)
+        
     self.assertListEqual(
-      encoded_features.get_shape().as_list(), 
-      [2, 28, 28, 256])
+        segmentation_mask.get_shape().as_list(), 
+        [2, 224, 224, 20])
 
   
-
 if __name__ == '__main__':
   tf.test.main()

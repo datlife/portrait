@@ -16,7 +16,6 @@ For object segmentation task:
    * Removed fixed image size
 """
 import tensorflow as tf
-
 from portrait.deeplab.core import ops
 from portrait.deeplab.core.feature_extractor import feature_extractor
 
@@ -52,8 +51,7 @@ def extract_features(images,
     raise ValueError(
         "`network_backbone` should be 'mobilenet_v2' or 'xception'")
 
-  # Extract feature map and low level features
-  # from network backbone.
+  # Extract feature map and low level features from image
   feature_map, low_level_features = feature_extractor(
       images=images,
       model_variant=network_backbone,
@@ -78,8 +76,7 @@ def atrous_spatial_pyramid_pooling(network_backbone,
                                    depth=256,
                                    normalizer_fn=tf.layers.BatchNormalization,
                                    activation_fn=tf.nn.relu6,
-                                   output_stride=8,
-                                   ):
+                                   output_stride=8,):
   """
 
   Args:
@@ -94,6 +91,7 @@ def atrous_spatial_pyramid_pooling(network_backbone,
 
   """
   atrous_rates = [12, 24, 36] if output_stride == 8 else [6, 12, 18]
+  
   with tf.variable_scope(name_or_scope='aspp'):
     logit_branches = []
     pool_height = scale_dimension(224, 1. / output_stride)
@@ -104,17 +102,28 @@ def atrous_spatial_pyramid_pooling(network_backbone,
       image_feature = tf.layers.AveragePooling2D(
           pool_size=(pool_height, pool_width),
           strides=2)(feature_map)
-      image_feature = tf.layers.Conv2D(depth, (1, 1))(image_feature)
+
+      image_feature = tf.layers.Conv2D(
+          filters=depth, 
+          kernel_size=(1, 1),
+          activation=activation_fn)(image_feature)
+
       image_feature = tf.image.resize_bilinear(
           images=image_feature,
           size=[pool_height, pool_width],
           align_corners=True)
-      image_feature.set_shape([None, pool_height, pool_width, depth])
+
+      image_feature.set_shape(
+        [None, pool_height, pool_width, depth])
+        
       logit_branches.append(image_feature)
 
     # 1x1 Conv
     with tf.variable_scope('1x1_conv_pooling'):
-      conv_1x1 = tf.layers.Conv2D(depth, (1, 1))(feature_map)
+      conv_1x1 = tf.layers.Conv2D(
+          filters=depth, 
+          kernel_size=(1, 1),
+          activation=activation_fn)(feature_map)
       logit_branches.append(conv_1x1)
 
     # 3x3 Atrous Separable Convs,
@@ -174,6 +183,7 @@ def _atrous_separable_conv(features,
         depth_multiplier=1,
         dilation_rate=(atrous_rate, atrous_rate),
         padding=padding)(features)
+        
     depthwise_conv = normalizer_fn(depthwise_conv)
     depthwise_conv = activation_fn(depthwise_conv)
 

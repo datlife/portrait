@@ -45,7 +45,13 @@ def deeplab_v3_plus_model(images):
         output_stride=8)
 
   # TODO: define decoder
-  # outputs = decoder.reconstruct(
-  #   encoded_features, low_level_features)
+  logits = decoder.reconstruct(
+      encoded_features, 
+      low_level_features,
+      decoder_width= 224 / 8,
+      decoder_height= 224 /8 ,
+      input_size=(224, 224),
+      num_classes=20,
+      model_variant='mobilenet_v2')
 
-  return encoded_features, low_level_features
+  return logits

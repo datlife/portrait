@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 
 def create_test_inputs(batch, height, width, channels):

@@ -1,8 +1,7 @@
 """Tests for encoder"""
 import numpy as np
 import tensorflow as tf
-
-from encoder import extract_features
+from portrait.deeplab.core.encoder import extract_features
 
 def create_test_inputs(batch, height, width, channels):
   """Create mock Images """

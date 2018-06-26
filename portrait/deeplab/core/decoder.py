@@ -5,8 +5,7 @@ import tensorflow as tf
 
 def reconstruct(encoded_features, 
                 low_level_features,
-                decoder_height,
-                decoder_width,
+                decoder_size,
                 input_size,
                 num_classes,
                 model_variant='mobilenet_v2'):
@@ -23,9 +22,10 @@ def reconstruct(encoded_features,
   low_level_features = tf.layers.Conv2D(
       filters=48, 
       kernel_size=(1, 1),
-      strides=1)(low_level_features)
+      strides=1,
+      padding='same')(low_level_features)
 
-  # Upsample encoded features by 4
+  # Upsample encoded features by 4, 2 if 'mobilnet'
   upsampled_features = tf.image.resize_bilinear(
       images=encoded_features,
       size=tf.shape(low_level_features)[1:3],

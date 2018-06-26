@@ -17,17 +17,17 @@ def create_test_inputs(batch, height, width, channels):
           [batch, 1, 1, channels]))
 
 
-class DeepLabV3PlusTest(tf.test.TestCase):
-  def testBuildDeepLabV3Plus(self):
-    """"Encoder Constructor Test"""
-    images = create_test_inputs(2, 224, 224, 3)
+# class DeepLabV3PlusTest(tf.test.TestCase):
+#   def testBuildDeepLabV3Plus(self):
+#     """"Encoder Constructor Test"""
+#     images = create_test_inputs(2, 224, 224, 3)
     
-    segmentation_mask = deeplab_v3_plus_model(
-        images=images)
+#     segmentation_mask = deeplab_v3_plus_model(
+#         images=images)
         
-    self.assertListEqual(
-        segmentation_mask.get_shape().as_list(), 
-        [2, 224, 224, 20])
+#     self.assertListEqual(
+#         segmentation_mask.get_shape().as_list(), 
+#         [2, 224, 224, 20])
 
   
 if __name__ == '__main__':

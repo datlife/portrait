@@ -74,11 +74,10 @@ def extract_features(images,
 def atrous_spatial_pyramid_pooling(network_backbone,
                                    feature_map,
                                    depth=256,
-                                   normalizer_fn=tf.layers.BatchNormalization,
                                    activation_fn=tf.nn.relu6,
+                                   normalizer_fn=tf.layers.BatchNormalization,                                  
                                    output_stride=8,):
   """
-
   Args:
     network_backbone:
     feature_map:

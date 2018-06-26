@@ -28,7 +28,7 @@ import tensorflow as tf
 from portrait.deeplab.core import encoder, decoder
 
 
-def deeplab_v3_plus_model(images):
+def deeplab_v3_plus_model(images, is_training, num_classes):
   """"Define Encoder-Decoder Atrous Separable Convolutional
   Neural network, a.k.a DeepLabV3+.
 
@@ -37,21 +37,23 @@ def deeplab_v3_plus_model(images):
       [batch, height, width, channels]
     
   """
+  output_stride = 8
+  input_size = tf.shape(images)[1:3]
+  decoder_size = input_size / output_stride
+
   encoded_features, low_level_features = \
     encoder.extract_features(
         images=images, 
         is_training=True, 
         network_backbone='mobilenet_v2',
-        output_stride=8)
+        output_stride=output_stride)
 
-  # TODO: define decoder
   logits = decoder.reconstruct(
       encoded_features, 
       low_level_features,
-      decoder_width= 224 / 8,
-      decoder_height= 224 /8 ,
-      input_size=(224, 224),
-      num_classes=20,
+      decoder_size=decoder_size,
+      input_size=input_size,
+      num_classes=num_classes,
       model_variant='mobilenet_v2')
 
   return logits

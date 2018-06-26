@@ -4,6 +4,7 @@ MOBILENET_V2_HUB = \
     "https://tfhub.dev/google/imagenet/mobilenet_v2_140_224/feature_vector/1"
 XCEPTION_HUB = None
 
+# https://github.com/tensorflow/models/blob/master/research/deeplab/core/feature_extractor.py#L101
 
 def feature_extractor(images, is_training, model_variant='mobilenet_v2'):
   """Extract sematic features from images using pre-trained
@@ -33,8 +34,6 @@ def feature_extractor(images, is_training, model_variant='mobilenet_v2'):
         as_dict=True)
 
     feature_map = outputs["MobilenetV2/layer_7/output"]
-
-    # https://github.com/tensorflow/models/blob/master/research/deeplab/core/feature_extractor.py#L101
     low_level_features = outputs["MobilenetV2/layer_4/depthwise_output"]
     return feature_map, low_level_features
 

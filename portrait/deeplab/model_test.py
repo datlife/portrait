@@ -3,32 +3,20 @@ import numpy as np
 import tensorflow as tf
 from portrait.deeplab.model import deeplab_v3_plus_model
 
+def test_build_deeplabv3_model():
 
-def create_test_inputs(batch, height, width, channels):
-  """Create mock Images """
-  if None in [batch, height, width, channels]:
-    return tf.placeholder(tf.float32, (batch, height, width, channels))
-  else:
-    return tf.to_float(
-        np.tile(np.reshape(
-            np.reshape(np.arange(height), [height, 1]) +
-            np.reshape(np.arange(width), [1, width]),
-            [1, height, width, 1]),
-          [batch, 1, 1, channels]))
+  num_classes = 20
+  inputs = tf.placeholder(
+      shape=[None, 224, 224, 3], dtype=tf.float32)
 
-
-# class DeepLabV3PlusTest(tf.test.TestCase):
-#   def testBuildDeepLabV3Plus(self):
-#     """"Encoder Constructor Test"""
-#     images = create_test_inputs(2, 224, 224, 3)
-    
-#     segmentation_mask = deeplab_v3_plus_model(
-#         images=images)
-        
-#     self.assertListEqual(
-#         segmentation_mask.get_shape().as_list(), 
-#         [2, 224, 224, 20])
-
+  mask = deeplab_v3_plus_model(
+      images=inputs,
+      is_training=True,
+      num_classes=num_classes,
+      network_backbone='mobilenet_v2',
+      output_stride=8)
   
-if __name__ == '__main__':
-  tf.test.main()
+  assert mask.get_shape().as_list() == \
+      [None, 224, 224, num_classes]
+
+# def test_forwardpass_model():

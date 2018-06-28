@@ -1,46 +1,42 @@
 """Tests for encoder"""
-import numpy as np
+import pytest
 import tensorflow as tf
 from portrait.deeplab.core.encoder import extract_features
 
-def create_test_inputs(batch, height, width, channels):
-  """Create mock Images """
-  if None in [batch, height, width, channels]:
-    return tf.placeholder(tf.float32, (batch, height, width, channels))
-  else:
-    return tf.to_float(
-        np.tile(np.reshape(
-            np.reshape(np.arange(height), [height, 1]) +
-            np.reshape(np.arange(width), [1, width]),
-            [1 ,height, width, 1]),
-          [batch, 1, 1, channels]))
 
-class DeepLabV3PlusEncoderTest(tf.test.TestCase):
-
-  def testBuildDeepLabV3PlusEncoder(self):
-    """"Encoder Constructor Test"""
-
-    images = create_test_inputs(2, 224, 224, 3)
-    encoded_features, _ = extract_features(
-      images=images,
+def test_deeplabv3plus_mobilnetv2_encoder():
+  """"Encoder Constructor Test"""
+  inputs = tf.placeholder(shape=[None, 224, 224, 3], dtype=tf.float32)
+  encoded_features, low_level_features = extract_features(
+      images=inputs,
       is_training=True,
+      network_backbone='mobilenet_v2', 
       output_stride=8)
 
-    self.assertListEqual(
-      encoded_features.get_shape().as_list(), 
-      [2, 28, 28, 256])
+  assert [None, 7, 7, 256] == \
+      encoded_features.get_shape().as_list()
+      
+  assert [None, 56, 56, 192] == \
+      low_level_features.get_shape().as_list()
 
-  def testDeepLabV3PlusEncoderEndPoints(self):
-    """"Encoder Constructor Test"""
 
-    images = create_test_inputs(2, 224, 224, 3)
-    encoded_features, _ = extract_features(
-      images=images,
-      is_training=True,
-      output_stride=8)
+def test_invalid_network_backbone_encoder():
+  """Test Invalid Iput `network_backbone`"""
+  inputs = tf.placeholder(shape=[None, 224, 224, 3], dtype=tf.float32)
+  with pytest.raises(ValueError, message="Expecting ValueError"): 
+    _, _ = extract_features(
+        images=inputs,
+        is_training=True,
+        network_backbone='ICanDoIt', 
+        output_stride=8)
 
-    for ops in tf.trainable_variables():
-      print(ops)
-
-if __name__ == '__main__':
-  tf.test.main()
+def test_invalid_network_output_stride():
+  """Test Invalid Iput `output_stride`"""
+  inputs = tf.placeholder(
+      shape=[None, 224, 224, 3], dtype=tf.float32)
+  with pytest.raises(ValueError, message="Expecting ValueError"): 
+    _, _ = extract_features(
+        images=inputs,
+        is_training=True,
+        network_backbone='mobilenet_v2', 
+        output_stride=12)

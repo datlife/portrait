@@ -46,7 +46,7 @@ def deeplab_v3_plus_model(images,
         "`network_backbone` should be 'mobilenet_v2' or 'xception'")
 
   input_size = images.get_shape().as_list()[1:3]
-  with tf.variable_scope('deeplabv3_plus', reuse=tf.AUTO_REUSE):
+  with tf.variable_scope('DeepLabV3Plus', reuse=tf.AUTO_REUSE):
     encoded_features, low_level_features = \
       encoder.extract_features(
           images=images, 

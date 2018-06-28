@@ -48,7 +48,7 @@ def extract_features(images,
     ValueError: `output_stride` or `network_backbone` input
       is invalid.
   """
-  with tf.variable_scope('encoder', reuse=tf.AUTO_REUSE):
+  with tf.variable_scope('Encoder', reuse=tf.AUTO_REUSE):
     # Extract features
     feature_map, low_level_features = feature_extractor(
         images=images,
@@ -65,11 +65,12 @@ def extract_features(images,
         output_stride=8)
 
     # Merge all
-    encoded_features = tf.layers.Conv2D(256, (1, 1))(assp_features)
-    encoded_features = normalizer_fn(encoded_features)
-    encoded_features = activation_fn(encoded_features)
+    with tf.variable_scope('1x1_Conv'):
+      encoded_features = tf.layers.Conv2D(256, (1, 1))(assp_features)
+      encoded_features = normalizer_fn(encoded_features)
+      encoded_features = activation_fn(encoded_features)
 
-    return encoded_features, low_level_features
+      return encoded_features, low_level_features
 
 
 def atrous_spatial_pyramid_pooling(network_backbone,
@@ -82,20 +83,19 @@ def atrous_spatial_pyramid_pooling(network_backbone,
   """
   atrous_rates = [12, 24, 36] if output_stride == 8 else [6, 12, 18]
   
-  with tf.variable_scope('aspp'):
+  with tf.variable_scope('AtrousSpatialPyramidPooling'):
     logit_branches = []
 
     # 1x1 Conv
-    with tf.variable_scope('1x1_conv_pooling'):
-      conv_1x1 = tf.layers.Conv2D(
+    with tf.variable_scope('1x1_ConvPooling'):
+      x = tf.layers.Conv2D(
           filters=depth, 
           kernel_size=(1, 1))(feature_map)
-
-      conv_1x1 = tf.layers.BatchNormalization(
+      x = tf.layers.BatchNormalization(
           epsilon=1e-3,
-          momentum=0.999)(conv_1x1)
-      conv_1x1 = activation_fn(conv_1x1)
-      logit_branches.append(conv_1x1)
+          momentum=0.999)(x)
+      x = tf.nn.relu6(x)
+      logit_branches.append(x)
 
     # 3x3 Atrous Separable Convs,
     if network_backbone != 'mobilenet_v2':
@@ -111,37 +111,38 @@ def atrous_spatial_pyramid_pooling(network_backbone,
             scope=scope)
         logit_branches.append(assp_features)
 
-
     # Image feature level
-    with tf.variable_scope('image_level_pooling'):
+    with tf.variable_scope('ImageLevelPooling'):
       # global average pooling
-      image_feature = tf.reduce_mean(
+      x = tf.reduce_mean(
           feature_map, [1, 2], 
           name='global_average_pooling', 
           keepdims=True)
 
       if 'mobilenet' in network_backbone:
-        image_feature = ops._mobilenetv2_conv_block(
-            inputs=image_feature,
+        x = ops._mobilenetv2_conv_block(
+            inputs=x,
             filters=depth,
             expansion=1,
             stride=1,
             alpha=1.0,
             block_id=1)
       else: # xception
-        image_feature = tf.layers.Conv2D(
+        x = tf.layers.Conv2D(
             filters=depth, 
-            kernel_size=(1, 1))(image_feature)
-        image_feature = normalizer_fn(image_feature)
-        image_feature = activation_fn(image_feature)
+            kernel_size=(1, 1))(x)
+        x = tf.layers.BatchNormalization(
+          epsilon=1e-3,
+          momentum=0.999)(x)
+        x = tf.nn.relu6(x)
 
-      image_feature = tf.image.resize_bilinear(
-          images=image_feature,
-          size=tf.shape(feature_map)[1:3],
-          align_corners=True,
-          name='upsample')
-
-      logit_branches.append(image_feature)
+      with tf.variable_scope('Upsample'):
+        x = tf.image.resize_bilinear(
+            images=x,
+            size=tf.shape(feature_map)[1:3],
+            align_corners=True)
+            
+      logit_branches.append(x)
 
     return tf.concat(logit_branches, 3)
 
@@ -155,21 +156,6 @@ def _atrous_separable_conv(features,
                            normalizer_fn=tf.nn.batch_normalization,
                            scope=None):
   """
-  
-  Args:
-    features: 
-    output_depth: 
-    kernel_size: 
-    strides: 
-    atrous_rate: 
-    weight_decay: 
-    activation_fn: 
-    normalizer_fn: 
-    scope: 
-
-  Returns:
-
-  """"""
   @TODO: add weight_decay, weight_regularizer, scope
   """
   with tf.variable_scope(scope):
